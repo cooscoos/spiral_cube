@@ -12,8 +12,8 @@ fn main() {
     println!(
         "You input {}. This is {:?} in cube coords, or {} converted back to spiral coords",
         spiral,
-        spiral_to_cube(spiral),
-        cube_to_spiral(spiral_to_cube(spiral)).unwrap(),
+        spiral_to_cube(spiral).unwrap(),
+        cube_to_spiral(spiral_to_cube(spiral).unwrap()).unwrap(),
     )
 
 }
@@ -21,10 +21,10 @@ fn main() {
 /// Converts spiral hex coordinate x to cube coords (q,r,s)
 /// See: https://www.redblobgames.com/grids/hexagons/
 /// for a definition of cube coords.
-fn spiral_to_cube(x: usize) -> (i8, i8, i8) {
+fn spiral_to_cube(x: usize) -> Result<(i8, i8, i8), &'static str> {
     // The origin is a special case: return (0,0,0)
     if x == 0 {
-        return (0, 0, 0);
+        return Ok((0, 0, 0));
     }
 
     // Find the ring number and ring-offset for this spiral
@@ -40,26 +40,28 @@ fn spiral_to_cube(x: usize) -> (i8, i8, i8) {
     // But, we also know that q+r+s = 0 in Cube coords, so more efficient:
     let s = -q - r;
 
-    (q, r, s)
+    Ok((q, r, s))
 }
 
 /// Calculate a spiral hex coordinate for an input (q,r,s) in
 /// cube coordinates
-fn cube_to_spiral(qrs: (i8, i8, i8)) -> Option<usize> {
+fn cube_to_spiral(qrs: (i8, i8, i8)) -> Result<usize,&'static str> {
     // The origin is a special case, return 0
     if qrs == (0, 0, 0) {
-        return Some(0);
+        return Ok(0);
     }
 
     let (q, r, s) = qrs;
 
     // Make sure we've got a valid cube coordinate. The components should sum to 0.
-    assert_eq!(q + r + s, 0);
+    if q+r+s != 0 {
+        return Err("q+r+s!=0");
+    }
 
     // Find the ring number based on the maximum absolute value of q,r or s
     let ring_number = match [q.abs(), r.abs(), s.abs()].into_iter().max() {
         Some(value) => value as usize,
-        None => return None,
+        None => return Err("Couldn't find ring number"),
     };
 
     let ring_offset = ring_offset(ring_number);
@@ -71,10 +73,13 @@ fn cube_to_spiral(qrs: (i8, i8, i8)) -> Option<usize> {
 
     let x = ring_offset..(ring_offset + ring_number * 6);
 
-    x.into_iter()
-        .map(|v| (v, spiral_to_cube(v)))
+    match x.into_iter()
+        .map(|v| (v, spiral_to_cube(v).unwrap()))
         .find(|(_, r)| *r == qrs)
-        .map(|(x, _)| x)
+        .map(|(x, _)| x) {
+            Some(value) => Ok(value),
+            None => Err("Couldn't find a solution"),
+        }
 
 }
 
@@ -116,7 +121,7 @@ fn modulo<T: std::ops::Rem<Output = T> + std::ops::Add<Output = T> + Copy>(a: T,
 
 #[cfg(test)]
 mod tests {
-    use crate::spiral_to_cube;
+    use crate::{spiral_to_cube, cube_to_spiral};
     #[test]
     fn test_spiral_to_cube() {
         // Test a few input values in spiral coordinates
@@ -125,7 +130,7 @@ mod tests {
         // Try find their cube coords
         let result = spiral_vals
             .into_iter()
-            .map(|x| spiral_to_cube(x))
+            .map(|x| spiral_to_cube(x).unwrap())
             .collect::<Vec<(i8, i8, i8)>>();
 
         // This is the result we expect to get
@@ -133,5 +138,17 @@ mod tests {
             vec![(0, 0, 0), (0, -1, 1), (0, 1, -1), (0, -2, 2), (4, 0, -4)];
 
         assert_eq!(expected, result);
+    }
+
+    #[test]
+    fn invalid_qrs(){
+
+        // An invalid set of cube coords
+        let qrs = (-1,-1,0);
+
+        assert_eq!(
+            Err("q+r+s!=0"),
+            cube_to_spiral(qrs),
+        )
     }
 }
