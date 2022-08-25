@@ -10,7 +10,7 @@ fn main() {
     let spiral = 5;
 
     println!(
-        "You input {}. This is {:?} in cube coords, or {} converted back to spiral coords",
+        "You input a spiral hex value of {}. This is {:?} in cube coords, or {} when converted back to spiral coords",
         spiral,
         spiral_to_cube(spiral).unwrap(),
         cube_to_spiral(spiral_to_cube(spiral).unwrap()).unwrap(),
@@ -45,7 +45,7 @@ fn spiral_to_cube(x: usize) -> Result<(i8, i8, i8), &'static str> {
 
 /// Calculate a spiral hex coordinate for an input (q,r,s) in
 /// cube coordinates
-fn cube_to_spiral(qrs: (i8, i8, i8)) -> Result<usize,&'static str> {
+fn cube_to_spiral(qrs: (i8, i8, i8)) -> Result<usize, &'static str> {
     // The origin is a special case, return 0
     if qrs == (0, 0, 0) {
         return Ok(0);
